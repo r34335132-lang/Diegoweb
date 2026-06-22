@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { Empty, Modal, PageHeader } from "@/components/ui";
 import { getCatalog } from "@/lib/data";
-import { supabase } from "@/lib/supabase";
+import { supabase, getMediaUrl } from "@/lib/supabase"; // <-- MODIFICACIÓN 1: Importamos getMediaUrl
 
 const categories = ["Todas", "Pierna", "Pecho", "Espalda", "Brazo", "Hombro", "Core", "Cardio", "Full Body", "General"];
 const emptyForm = { nombre: "", categoria: "General", descripcion: "", imagen_url: "", video_url: "" };
@@ -86,7 +86,12 @@ export default function CatalogPage() {
               </div>
               <h3>{item.nombre}</h3>
               <p className="muted">{item.descripcion || "Sin descripción"}</p>
-              {item.imagen_url ? <img className="media-preview" src={item.imagen_url} alt={item.nombre} /> : null}
+              
+              {/* MODIFICACIÓN 2: Usamos getMediaUrl para convertir el path en URL */}
+              {item.imagen_url ? <img className="media-preview" src={getMediaUrl(item.imagen_url)} alt={item.nombre} /> : null}
+              {/* Si quieres mostrar video en el catálogo, puedes agregarlo así: */}
+              {item.video_url ? <video className="media-preview" src={getMediaUrl(item.video_url)} controls /> : null}
+
             </article>
           ))}
         </div>
@@ -97,8 +102,11 @@ export default function CatalogPage() {
           <div className="field full"><label>Nombre</label><input className="input" value={form.nombre} onChange={(event) => setForm({ ...form, nombre: event.target.value })} required /></div>
           <div className="field full"><label>Categoría</label><select className="select" value={form.categoria} onChange={(event) => setForm({ ...form, categoria: event.target.value })}>{categories.slice(1).map((item) => <option key={item}>{item}</option>)}</select></div>
           <div className="field full"><label>Descripción</label><textarea className="textarea" value={form.descripcion} onChange={(event) => setForm({ ...form, descripcion: event.target.value })} /></div>
-          <div className="field full"><label><ImageIcon size={13} /> URL de imagen</label><input className="input" type="url" value={form.imagen_url} onChange={(event) => setForm({ ...form, imagen_url: event.target.value })} /></div>
-          <div className="field full"><label><Video size={13} /> URL de video</label><input className="input" type="url" value={form.video_url} onChange={(event) => setForm({ ...form, video_url: event.target.value })} /></div>
+          
+          {/* MODIFICACIÓN 3: Cambiamos type="url" por type="text" */}
+          <div className="field full"><label><ImageIcon size={13} /> URL o Path de imagen</label><input className="input" type="text" value={form.imagen_url} onChange={(event) => setForm({ ...form, imagen_url: event.target.value })} /></div>
+          <div className="field full"><label><Video size={13} /> URL o Path de video</label><input className="input" type="text" value={form.video_url} onChange={(event) => setForm({ ...form, video_url: event.target.value })} /></div>
+          
           <div className="actions full" style={{ justifyContent: "flex-end" }}>
             <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Cancelar</button>
             <button className="btn btn-primary" disabled={create.isPending}><Save size={16} /> {create.isPending ? "Guardando..." : "Guardar ejercicio"}</button>
