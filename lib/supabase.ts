@@ -10,3 +10,14 @@ if (!url || !anonKey) {
 export const supabase = createClient(url, anonKey, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 });
+
+// Función auxiliar para obtener la URL pública de un archivo multimedia
+export const getMediaUrl = (path: string | null | undefined) => {
+  if (!path) return "";
+  
+  // Mantiene compatibilidad con las URLs viejas completas que ya tenías guardadas
+  if (path.startsWith("http")) return path; 
+  
+  // Convierte el path (ej. "images/123.jpg") en una URL pública válida
+  return supabase.storage.from("media").getPublicUrl(path).data.publicUrl;
+};
