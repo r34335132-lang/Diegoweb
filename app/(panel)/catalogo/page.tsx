@@ -1,12 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, ImageIcon, Plus, Save, Search, Trash2, Video } from "lucide-react";
+import { BookOpen, ImageIcon, Plus, Save, Search, Trash2, Video, UploadCloud } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { Empty, Modal, PageHeader } from "@/components/ui";
 import { getCatalog } from "@/lib/data";
-import { supabase, getMediaUrl } from "@/lib/supabase"; // <-- MODIFICACIÓN 1: Importamos getMediaUrl
+import { supabase, getMediaUrl } from "@/lib/supabase";
 
 const categories = ["Todas", "Pierna", "Pecho", "Espalda", "Brazo", "Hombro", "Core", "Cardio", "Full Body", "General"];
 const emptyForm = { nombre: "", categoria: "General", descripcion: "", imagen_url: "", video_url: "" };
@@ -20,10 +20,53 @@ export default function CatalogPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
+  
+  // Estados para saber si se está subiendo un archivo
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+
   const query = useQuery({
     queryKey: ["catalog", id],
     queryFn: () => getCatalog(id),
   });
+
+  // Función para manejar la subida de archivos desde la PC
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: "image" | "video") => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (type === "image") setUploadingImage(true);
+    else setUploadingVideo(true);
+    setError("");
+
+    try {
+      // Generar un nombre único para el archivo
+      const ext = file.name.split('.').pop() || (type === "image" ? "jpg" : "mp4");
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+      const filePath = `${type === "image" ? "images" : "videos"}/${fileName}`;
+
+      // Subir a Supabase
+      const { data, error: uploadError } = await supabase.storage
+        .from("media")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Actualizar el formulario con el nuevo path
+      if (type === "image") {
+        setForm(prev => ({ ...prev, imagen_url: data.path }));
+      } else {
+        setForm(prev => ({ ...prev, video_url: data.path }));
+      }
+    } catch (err: any) {
+      setError(err.message || "Error al subir el archivo");
+    } finally {
+      if (type === "image") setUploadingImage(false);
+      else setUploadingVideo(false);
+      // Limpiamos el input para que permita subir el mismo archivo si se borró
+      event.target.value = ""; 
+    }
+  };
 
   const create = useMutation({
     mutationFn: async () => {
@@ -63,6 +106,8 @@ export default function CatalogPage() {
     [query.data, category, search],
   );
 
+  const isUploading = uploadingImage || uploadingVideo;
+
   return (
     <>
       <PageHeader title="Catálogo" subtitle="Tu biblioteca reutilizable de ejercicios.">
@@ -87,9 +132,7 @@ export default function CatalogPage() {
               <h3>{item.nombre}</h3>
               <p className="muted">{item.descripcion || "Sin descripción"}</p>
               
-              {/* MODIFICACIÓN 2: Usamos getMediaUrl para convertir el path en URL */}
               {item.imagen_url ? <img className="media-preview" src={getMediaUrl(item.imagen_url)} alt={item.nombre} /> : null}
-              {/* Si quieres mostrar video en el catálogo, puedes agregarlo así: */}
               {item.video_url ? <video className="media-preview" src={getMediaUrl(item.video_url)} controls /> : null}
 
             </article>
@@ -103,13 +146,37 @@ export default function CatalogPage() {
           <div className="field full"><label>Categoría</label><select className="select" value={form.categoria} onChange={(event) => setForm({ ...form, categoria: event.target.value })}>{categories.slice(1).map((item) => <option key={item}>{item}</option>)}</select></div>
           <div className="field full"><label>Descripción</label><textarea className="textarea" value={form.descripcion} onChange={(event) => setForm({ ...form, descripcion: event.target.value })} /></div>
           
-          {/* MODIFICACIÓN 3: Cambiamos type="url" por type="text" */}
-          <div className="field full"><label><ImageIcon size={13} /> URL o Path de imagen</label><input className="input" type="text" value={form.imagen_url} onChange={(event) => setForm({ ...form, imagen_url: event.target.value })} /></div>
-          <div className="field full"><label><Video size={13} /> URL o Path de video</label><input className="input" type="text" value={form.video_url} onChange={(event) => setForm({ ...form, video_url: event.target.value })} /></div>
+          {/* SECCIÓN IMAGEN */}
+          <div className="field full">
+            <label><ImageIcon size={13} /> Imagen</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input className="input" type="text" placeholder="Pega el path/URL o sube un archivo..." value={form.imagen_url} onChange={(event) => setForm({ ...form, imagen_url: event.target.value })} style={{ flex: 1 }} />
+              <label className={`btn btn-secondary ${uploadingImage ? 'disabled' : ''}`} style={{ cursor: 'pointer', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <UploadCloud size={16} />
+                {uploadingImage ? "Subiendo..." : "Subir PC"}
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, "image")} disabled={uploadingImage} />
+              </label>
+            </div>
+          </div>
+
+          {/* SECCIÓN VIDEO */}
+          <div className="field full">
+            <label><Video size={13} /> Video</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input className="input" type="text" placeholder="Pega el path/URL o sube un archivo..." value={form.video_url} onChange={(event) => setForm({ ...form, video_url: event.target.value })} style={{ flex: 1 }} />
+              <label className={`btn btn-secondary ${uploadingVideo ? 'disabled' : ''}`} style={{ cursor: 'pointer', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <UploadCloud size={16} />
+                {uploadingVideo ? "Subiendo..." : "Subir PC"}
+                <input type="file" accept="video/*" style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, "video")} disabled={uploadingVideo} />
+              </label>
+            </div>
+          </div>
           
-          <div className="actions full" style={{ justifyContent: "flex-end" }}>
+          <div className="actions full" style={{ justifyContent: "flex-end", marginTop: 12 }}>
             <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Cancelar</button>
-            <button className="btn btn-primary" disabled={create.isPending}><Save size={16} /> {create.isPending ? "Guardando..." : "Guardar ejercicio"}</button>
+            <button className="btn btn-primary" disabled={create.isPending || isUploading}>
+              <Save size={16} /> {(create.isPending || isUploading) ? "Guardando..." : "Guardar ejercicio"}
+            </button>
           </div>
         </form>
       </Modal>
