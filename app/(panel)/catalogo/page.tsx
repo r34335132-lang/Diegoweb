@@ -58,8 +58,9 @@ export default function CatalogPage() {
       } else {
         setForm(prev => ({ ...prev, video_url: data.path }));
       }
-    } catch (err: any) {
-      setError(err.message || "Error al subir el archivo");
+    } catch (err) {
+      // CORRECCIÓN PARA VERCEL: Quitamos el ': any' y verificamos con instanceof Error
+      setError(err instanceof Error ? err.message : "Error al subir el archivo");
     } finally {
       if (type === "image") setUploadingImage(false);
       else setUploadingVideo(false);
@@ -146,7 +147,6 @@ export default function CatalogPage() {
           <div className="field full"><label>Categoría</label><select className="select" value={form.categoria} onChange={(event) => setForm({ ...form, categoria: event.target.value })}>{categories.slice(1).map((item) => <option key={item}>{item}</option>)}</select></div>
           <div className="field full"><label>Descripción</label><textarea className="textarea" value={form.descripcion} onChange={(event) => setForm({ ...form, descripcion: event.target.value })} /></div>
           
-          {/* SECCIÓN IMAGEN */}
           <div className="field full">
             <label><ImageIcon size={13} /> Imagen</label>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -159,7 +159,6 @@ export default function CatalogPage() {
             </div>
           </div>
 
-          {/* SECCIÓN VIDEO */}
           <div className="field full">
             <label><Video size={13} /> Video</label>
             <div style={{ display: 'flex', gap: '8px' }}>
