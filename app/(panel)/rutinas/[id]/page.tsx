@@ -8,7 +8,7 @@ import { useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { Empty, Modal, PageHeader } from "@/components/ui";
 import { getClients, getRoutine } from "@/lib/data";
-import { supabase } from "@/lib/supabase";
+import { supabase, getMediaUrl } from "@/lib/supabase"; // <-- MODIFICACIÓN: Importamos getMediaUrl
 import type { Exercise } from "@/lib/types";
 
 const emptyExercise = {
@@ -107,8 +107,11 @@ export default function RoutineDetailPage() {
                 <div className="actions"><h3 style={{ margin: 0 }}>{exercise.nombre}</h3>{exercise.grupo_serie ? <span className="badge" style={{ "--badge-color": "#f97316" } as React.CSSProperties}>{exercise.grupo_serie}</span> : null}</div>
                 {exercise.descripcion ? <p className="muted">{exercise.descripcion}</p> : null}
                 <div className="exercise-meta"><span>{exercise.series} series</span><span>{exercise.repeticiones} reps</span>{exercise.peso ? <span>{exercise.peso}</span> : null}<span>{exercise.descanso}</span></div>
-                {exercise.imagen_url ? <img className="media-preview" src={exercise.imagen_url} alt={exercise.nombre} /> : null}
-                {exercise.video_url ? <video className="media-preview" src={exercise.video_url} controls /> : null}
+                
+                {/* MODIFICACIÓN: Aquí envolvemos las URLs con getMediaUrl */}
+                {exercise.imagen_url ? <img className="media-preview" src={getMediaUrl(exercise.imagen_url)} alt={exercise.nombre} /> : null}
+                {exercise.video_url ? <video className="media-preview" src={getMediaUrl(exercise.video_url)} controls /> : null}
+                
               </div>
               <div className="actions"><button className="btn btn-secondary btn-icon" onClick={() => { setEditExercise(exercise); setForm({ ...emptyExercise, nombre: exercise.nombre, descripcion: exercise.descripcion ?? "", series: String(exercise.series), repeticiones: exercise.repeticiones, peso: exercise.peso ?? "", descanso: exercise.descanso ?? "60s", imagen_url: exercise.imagen_url ?? "", video_url: exercise.video_url ?? "" }); setExerciseOpen(true); }}><Pencil size={16} /></button><button className="btn btn-danger btn-icon" onClick={() => removeExercise.mutate(exercise.id)}><Trash2 size={16} /></button></div>
             </article>
@@ -124,8 +127,11 @@ export default function RoutineDetailPage() {
           <div className="field"><label>Repeticiones</label><input className="input" value={form.repeticiones} onChange={(e) => setForm({ ...form, repeticiones: e.target.value })} /></div>
           <div className="field"><label>Peso</label><input className="input" value={form.peso} onChange={(e) => setForm({ ...form, peso: e.target.value })} /></div>
           <div className="field"><label>Descanso</label><input className="input" value={form.descanso} onChange={(e) => setForm({ ...form, descanso: e.target.value })} /></div>
-          <div className="field full"><label><ImageIcon size={13} /> URL de imagen</label><input className="input" type="url" value={form.imagen_url} onChange={(e) => setForm({ ...form, imagen_url: e.target.value })} /></div>
-          <div className="field full"><label><Video size={13} /> URL de video</label><input className="input" type="url" value={form.video_url} onChange={(e) => setForm({ ...form, video_url: e.target.value })} /></div>
+          
+          {/* OJO: Aquí el entrenador puede seguir pegando el path (ej. images/123.jpg) o la URL completa */}
+          <div className="field full"><label><ImageIcon size={13} /> URL o Path de imagen</label><input className="input" type="text" value={form.imagen_url} onChange={(e) => setForm({ ...form, imagen_url: e.target.value })} /></div>
+          <div className="field full"><label><Video size={13} /> URL o Path de video</label><input className="input" type="text" value={form.video_url} onChange={(e) => setForm({ ...form, video_url: e.target.value })} /></div>
+          
           <label className="full actions"><input type="checkbox" checked={form.saveCatalog} onChange={(e) => setForm({ ...form, saveCatalog: e.target.checked })} /> Guardar también en el catálogo</label>
           {form.saveCatalog ? <div className="field full"><label>Categoría</label><select className="select" value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })}>{categories.map((category) => <option key={category}>{category}</option>)}</select></div> : null}
           <div className="actions full" style={{ justifyContent: "flex-end" }}><button type="button" className="btn btn-secondary" onClick={() => setExerciseOpen(false)}>Cancelar</button><button className="btn btn-primary" disabled={saveExercise.isPending}><Save size={16} /> Guardar</button></div>
